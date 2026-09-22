@@ -1,4 +1,4 @@
-const CACHE = 'demomq-v2';
+const CACHE = 'demomq-v3';
 
 const PRECACHE = [
   '/',
@@ -12,11 +12,20 @@ const PRECACHE = [
   '/fonts/roboto-condensed-bold.woff2',
 ];
 
+async function precacheUrl(cache, url) {
+  try {
+    const response = await fetch(url, { credentials: 'same-origin' });
+    if (response.ok) await cache.put(url, response);
+  } catch {
+    // non-fatal — SW install still succeeds
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => Promise.allSettled(
-      PRECACHE.map((url) => cache.add(url).catch(() => {})),
-    )).then(() => self.skipWaiting()),
+    caches.open(CACHE)
+      .then((cache) => Promise.all(PRECACHE.map((url) => precacheUrl(cache, url))))
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -36,28 +45,36 @@ function isStaticAsset(url) {
   return /\.(css|js|woff2?|ttf|otf|png|jpg|jpeg|gif|webp|svg|ico)(\?.*)?$/.test(url.pathname);
 }
 
+const OFFLINE_RESPONSE = new Response(
+  '<h1>You are offline</h1><p>Please reconnect and try again.</p>',
+  { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+);
+
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
   try {
     const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok) cache.put(request.url, response.clone());
     return response;
   } catch {
-    const cached = await cache.match(request);
-    return cached || cache.match('/offline.html');
+    // match by URL string to avoid Vary-header mismatches
+    const cached = await cache.match(request.url);
+    if (cached) return cached;
+    const offline = await cache.match('/offline.html');
+    return offline || OFFLINE_RESPONSE.clone();
   }
 }
 
 async function cacheFirst(request) {
-  const cached = await caches.match(request);
+  const cached = await caches.match(request.url);
   if (cached) return cached;
   const cache = await caches.open(CACHE);
   try {
     const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok) cache.put(request.url, response.clone());
     return response;
   } catch {
-    return new Response('', { status: 408 });
+    return new Response('', { status: 503 });
   }
 }
 
@@ -65,7 +82,6 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // only handle same-origin and aem CDN requests
   if (!['https:', 'http:'].includes(url.protocol)) return;
 
   if (isNavigationRequest(request)) {
