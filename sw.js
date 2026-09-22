@@ -1,21 +1,22 @@
-const CACHE = 'demomq-v1';
+const CACHE = 'demomq-v2';
 
 const PRECACHE = [
   '/',
+  '/offline.html',
   '/styles/styles.css',
   '/styles/lazy-styles.css',
   '/scripts/scripts.js',
-  '/scripts/aem.js',
   '/fonts/roboto-regular.woff2',
   '/fonts/roboto-medium.woff2',
   '/fonts/roboto-bold.woff2',
   '/fonts/roboto-condensed-bold.woff2',
-  '/offline',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches.open(CACHE).then((cache) => Promise.allSettled(
+      PRECACHE.map((url) => cache.add(url).catch(() => {})),
+    )).then(() => self.skipWaiting()),
   );
 });
 
@@ -43,7 +44,7 @@ async function networkFirst(request) {
     return response;
   } catch {
     const cached = await cache.match(request);
-    return cached || cache.match('/offline');
+    return cached || cache.match('/offline.html');
   }
 }
 
