@@ -1,0 +1,16 @@
+{
+  "name": "demomq",
+  "short_name": "demomq",
+  "description": "demomq – Edge Delivery Services site",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b63fb",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
