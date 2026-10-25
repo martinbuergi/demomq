@@ -15,4 +15,17 @@ module.exports = {
     'linebreak-style': ['error', 'unix'], // enforce unix linebreaks
     'no-param-reassign': [2, { props: false }], // allow modifying properties of param
   },
+  overrides: [
+    {
+      // service worker: `self` is the ServiceWorkerGlobalScope
+      files: ['sw.js'],
+      env: {
+        browser: false,
+        serviceworker: true,
+      },
+      rules: {
+        'no-restricted-globals': 'off', // airbnb restricts `self`, the SW global
+      },
+    },
+  ],
 };
